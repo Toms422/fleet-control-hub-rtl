@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,7 +33,7 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onBack }) => {
     model: '',
     vin: '',
     barcode: '',
-    maintenanceStatus: 'תקין' as const
+    maintenanceStatus: 'תקין' as 'תקין' | 'דורש טיפול'
   });
 
   useEffect(() => {
