@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Car, Settings, FileText, Calendar, LogOut, Users, Wrench, BarChart3, Clock } from 'lucide-react';
+import { Car, Settings, FileText, Calendar, LogOut, Users, Wrench, BarChart3, Clock, History } from 'lucide-react';
 
 interface DashboardProps {
   onNavigate: (page: string) => void;
@@ -48,6 +47,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onLogout }) => {
       icon: Calendar,
       color: 'from-orange-500 to-orange-600',
       stats: '2 אירועים השבוע'
+    },
+    {
+      id: 'history',
+      title: 'היסטוריית טפסים',
+      description: 'צפייה בטפסים ציבוריים שנשלחו',
+      icon: History,
+      color: 'from-teal-500 to-teal-600',
+      stats: '12 טפסים חדשים'
     }
   ];
 
@@ -107,7 +114,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onLogout }) => {
         </div>
 
         {/* Main Menu */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {menuItems.map((item, index) => (
             <Card 
               key={item.id} 
