@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Car, Settings, FileText, Calendar, LogOut, Users, Wrench, BarChart3, Clock, History } from 'lucide-react';
@@ -9,6 +10,50 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onLogout }) => {
+  const [vehicleStats, setVehicleStats] = useState({
+    totalVehicles: 0,
+    availableVehicles: 0,
+    inMaintenance: 0
+  });
+  const [maintenanceStats, setMaintenanceStats] = useState({
+    thisMonth: 0,
+    total: 0
+  });
+
+  useEffect(() => {
+    // Load real vehicle data from localStorage
+    const savedVehicles = localStorage.getItem('vehicles');
+    if (savedVehicles) {
+      const vehicles = JSON.parse(savedVehicles);
+      const total = vehicles.length;
+      const inMaintenance = vehicles.filter((v: any) => v.maintenanceStatus === 'דורש טיפול').length;
+      const available = total - inMaintenance;
+      
+      setVehicleStats({
+        totalVehicles: total,
+        availableVehicles: available,
+        inMaintenance: inMaintenance
+      });
+    }
+
+    // Load maintenance data
+    const savedMaintenanceRecords = localStorage.getItem('maintenanceRecords');
+    if (savedMaintenanceRecords) {
+      const records = JSON.parse(savedMaintenanceRecords);
+      const currentDate = new Date();
+      const thisMonthRecords = records.filter((r: any) => {
+        const recordDate = new Date(r.date);
+        return recordDate.getMonth() === currentDate.getMonth() && 
+               recordDate.getFullYear() === currentDate.getFullYear();
+      });
+      
+      setMaintenanceStats({
+        thisMonth: thisMonthRecords.length,
+        total: records.length
+      });
+    }
+  }, []);
+
   const handleLogout = () => {
     sessionStorage.removeItem('isLoggedIn');
     sessionStorage.removeItem('loginTime');
@@ -22,7 +67,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onLogout }) => {
       description: 'הוספה, עריכה ומחיקה של רכבים',
       icon: Car,
       color: 'from-blue-500 to-blue-600',
-      stats: '4 רכבים פעילים'
+      stats: `${vehicleStats.totalVehicles} רכבים פעילים`
     },
     {
       id: 'maintenance',
@@ -30,7 +75,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onLogout }) => {
       description: 'ניהול פעולות תחזוקה ושירות',
       icon: Wrench,
       color: 'from-green-500 to-green-600',
-      stats: '3 פעולות השבוע'
+      stats: `${maintenanceStats.thisMonth} פעולות החודש`
     },
     {
       id: 'reports',
@@ -46,7 +91,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onLogout }) => {
       description: 'תכנון תחזוקה ונסיעות',
       icon: Calendar,
       color: 'from-orange-500 to-orange-600',
-      stats: '2 אירועים השבוע'
+      stats: `${maintenanceStats.total} אירועים בסך הכל`
     },
     {
       id: 'history',
@@ -59,10 +104,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onLogout }) => {
   ];
 
   const quickStats = [
-    { label: 'סה"כ רכבים', value: '4', icon: Car, color: 'text-blue-600' },
-    { label: 'רכבים זמינים', value: '3', icon: Users, color: 'text-green-600' },
-    { label: 'בתחזוקה', value: '1', icon: Settings, color: 'text-orange-600' },
-    { label: 'תחזוקות החודש', value: '8', icon: Clock, color: 'text-purple-600' }
+    { label: 'סה"כ רכבים', value: vehicleStats.totalVehicles.toString(), icon: Car, color: 'text-blue-600' },
+    { label: 'רכבים זמינים', value: vehicleStats.availableVehicles.toString(), icon: Users, color: 'text-green-600' },
+    { label: 'בתחזוקה', value: vehicleStats.inMaintenance.toString(), icon: Settings, color: 'text-orange-600' },
+    { label: 'תחזוקות החודש', value: maintenanceStats.thisMonth.toString(), icon: Clock, color: 'text-purple-600' }
   ];
 
   return (

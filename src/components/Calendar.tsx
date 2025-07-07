@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,34 +18,37 @@ interface Event {
   description?: string;
 }
 
+interface MaintenanceRecord {
+  id: string;
+  vehicleId: string;
+  vehiclePlateNumber: string;
+  serviceType: string;
+  date: string;
+  notes: string;
+  cost?: number;
+  addedDate: string;
+}
+
 const Calendar: React.FC<CalendarProps> = ({ onBack }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState<Event[]>([
-    {
-      id: '1',
-      title: 'בדיקת שמן',
-      date: new Date(2025, 0, 15), // January 15, 2025
-      type: 'maintenance',
-      vehicleNumber: 'V001',
-      description: 'החלפת שמן מנוע וסינון'
-    },
-    {
-      id: '2',
-      title: 'טסט שנתי',
-      date: new Date(2025, 0, 20), // January 20, 2025
-      type: 'inspection',
-      vehicleNumber: 'V002',
-      description: 'בדיקה שנתית חובה'
-    },
-    {
-      id: '3',
-      title: 'החלפת צמיגים',
-      date: new Date(2025, 0, 25), // January 25, 2025
-      type: 'service',
-      vehicleNumber: 'V003',
-      description: 'החלפת צמיגים חורף'
+  const [events, setEvents] = useState<Event[]>([]);
+
+  useEffect(() => {
+    // Load maintenance records from localStorage and convert to calendar events
+    const savedRecords = localStorage.getItem('maintenanceRecords');
+    if (savedRecords) {
+      const maintenanceRecords: MaintenanceRecord[] = JSON.parse(savedRecords);
+      const calendarEvents: Event[] = maintenanceRecords.map(record => ({
+        id: record.id,
+        title: record.serviceType,
+        date: new Date(record.date),
+        type: 'maintenance',
+        vehicleNumber: record.vehiclePlateNumber,
+        description: record.notes
+      }));
+      setEvents(calendarEvents);
     }
-  ]);
+  }, []);
 
   const getDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -228,30 +231,34 @@ const Calendar: React.FC<CalendarProps> = ({ onBack }) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {events
-                .filter(event => event.date >= new Date())
-                .sort((a, b) => a.date.getTime() - b.date.getTime())
-                .slice(0, 5)
-                .map(event => {
-                  const IconComponent = getTypeIcon(event.type);
-                  return (
-                    <div key={event.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getTypeColor(event.type)}`}>
-                        <IconComponent className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{event.title}</h4>
-                        <p className="text-sm text-gray-600">{event.description}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline">{event.vehicleNumber}</Badge>
-                          <span className="text-sm text-gray-500">
-                            {event.date.toLocaleDateString('he-IL')}
-                          </span>
+              {events.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">אין אירועים קרובים</p>
+              ) : (
+                events
+                  .filter(event => event.date >= new Date())
+                  .sort((a, b) => a.date.getTime() - b.date.getTime())
+                  .slice(0, 5)
+                  .map(event => {
+                    const IconComponent = getTypeIcon(event.type);
+                    return (
+                      <div key={event.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getTypeColor(event.type)}`}>
+                          <IconComponent className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-900">{event.title}</h4>
+                          <p className="text-sm text-gray-600">{event.description}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline">{event.vehicleNumber}</Badge>
+                            <span className="text-sm text-gray-500">
+                              {event.date.toLocaleDateString('he-IL')}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+              )}
             </div>
           </CardContent>
         </Card>

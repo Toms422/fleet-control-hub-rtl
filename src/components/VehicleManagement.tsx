@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,6 @@ interface Vehicle {
   id: string;
   plateNumber: string;
   model: string;
-  vin: string;
   barcode: string;
   maintenanceStatus: 'תקין' | 'דורש טיפול';
   addedDate: string;
@@ -31,7 +31,6 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onBack }) => {
   const [formData, setFormData] = useState({
     plateNumber: '',
     model: '',
-    vin: '',
     barcode: '',
     maintenanceStatus: 'תקין' as 'תקין' | 'דורש טיפול'
   });
@@ -48,7 +47,6 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onBack }) => {
           id: '1',
           plateNumber: '123-45-678',
           model: 'טויוטה קורולה',
-          vin: 'JT2BF28K0X0123456',
           barcode: 'BAR001',
           maintenanceStatus: 'תקין',
           addedDate: '2024-01-15'
@@ -57,7 +55,6 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onBack }) => {
           id: '2',
           plateNumber: '987-65-432',
           model: 'הונדה סיוויק',
-          vin: '1HGBH41JXMN123456',
           barcode: 'BAR002',
           maintenanceStatus: 'דורש טיפול',
           addedDate: '2024-02-10'
@@ -100,7 +97,6 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onBack }) => {
     setFormData({
       plateNumber: '',
       model: '',
-      vin: '',
       barcode: '',
       maintenanceStatus: 'תקין'
     });
@@ -114,7 +110,6 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onBack }) => {
     setFormData({
       plateNumber: vehicle.plateNumber,
       model: vehicle.model,
-      vin: vehicle.vin,
       barcode: vehicle.barcode,
       maintenanceStatus: vehicle.maintenanceStatus
     });
@@ -136,7 +131,6 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onBack }) => {
     setFormData({
       plateNumber: '',
       model: '',
-      vin: '',
       barcode: '',
       maintenanceStatus: 'תקין'
     });
@@ -224,18 +218,6 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onBack }) => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="vin">מספר זיהוי (VIN)</Label>
-                    <Input
-                      id="vin"
-                      value={formData.vin}
-                      onChange={(e) => setFormData({...formData, vin: e.target.value})}
-                      placeholder="JT2BF28K0X0123456"
-                      required
-                      className="text-right"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
                     <Label htmlFor="barcode">ברקוד</Label>
                     <Input
                       id="barcode"
@@ -247,7 +229,7 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onBack }) => {
                     />
                   </div>
                   
-                  <div className="space-y-2 md:col-span-2">
+                  <div className="space-y-2">
                     <Label htmlFor="maintenanceStatus">סטטוס תחזוקה</Label>
                     <Select 
                       value={formData.maintenanceStatus} 
@@ -319,7 +301,6 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onBack }) => {
                   
                   <CardContent className="pt-0">
                     <div className="space-y-2 text-sm text-gray-600 mb-4">
-                      <p><span className="font-medium">VIN:</span> {vehicle.vin}</p>
                       <p><span className="font-medium">ברקוד:</span> {vehicle.barcode}</p>
                       <p><span className="font-medium">תאריך הוספה:</span> {vehicle.addedDate}</p>
                     </div>
