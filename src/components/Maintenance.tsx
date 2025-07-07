@@ -8,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Wrench, Plus, Trash2, ArrowRight, Calendar, FileText, Car } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Wrench, Plus, Trash2, ArrowRight, Calendar, FileText, Car, CheckCircle, Clock, Upload } from 'lucide-react';
 
 interface MaintenanceRecord {
   id: string;
@@ -19,6 +20,13 @@ interface MaintenanceRecord {
   notes: string;
   cost?: number;
   addedDate: string;
+  completed: boolean;
+  tasks: Array<{
+    id: string;
+    description: string;
+    completed: boolean;
+  }>;
+  receiptImage?: string;
 }
 
 interface MaintenanceProps {
@@ -36,7 +44,9 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
     serviceType: '',
     date: '',
     notes: '',
-    cost: ''
+    cost: '',
+    tasks: '',
+    receiptImage: null as File | null
   });
 
   const serviceTypes = [
@@ -55,6 +65,10 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
   ];
 
   useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = () => {
     // Load vehicles
     const savedVehicles = localStorage.getItem('vehicles');
     if (savedVehicles) {
@@ -64,39 +78,28 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
     // Load maintenance records
     const savedRecords = localStorage.getItem('maintenanceRecords');
     if (savedRecords) {
-      setMaintenanceRecords(JSON.parse(savedRecords));
-    } else {
-      // Initialize with sample data
-      const sampleRecords: MaintenanceRecord[] = [
-        {
-          id: '1',
-          vehicleId: '1',
-          vehiclePlateNumber: '123-45-678',
-          serviceType: 'שירות שמן',
-          date: '2024-01-20',
-          notes: 'החלפת שמן מנוע וסינון',
-          cost: 250,
-          addedDate: '2024-01-20'
-        },
-        {
-          id: '2',
-          vehicleId: '2',
-          vehiclePlateNumber: '987-65-432',
-          serviceType: 'בדיקת בלמים',
-          date: '2024-02-15',
-          notes: 'בדיקת מערכת בלימה - נדרש החלפת רפידות',
-          cost: 400,
-          addedDate: '2024-02-15'
-        }
-      ];
-      setMaintenanceRecords(sampleRecords);
-      localStorage.setItem('maintenanceRecords', JSON.stringify(sampleRecords));
+      const records = JSON.parse(savedRecords);
+      // Ensure all records have the new fields
+      const updatedRecords = records.map((record: any) => ({
+        ...record,
+        completed: record.completed ?? false,
+        tasks: record.tasks ?? [],
+        receiptImage: record.receiptImage ?? null
+      }));
+      setMaintenanceRecords(updatedRecords);
     }
-  }, []);
+  };
 
   const saveMaintenanceRecords = (newRecords: MaintenanceRecord[]) => {
     setMaintenanceRecords(newRecords);
     localStorage.setItem('maintenanceRecords', JSON.stringify(newRecords));
+  };
+
+  const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFormData({...formData, receiptImage: file});
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -108,6 +111,16 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
       return;
     }
 
+    // Parse tasks from text input
+    const tasks = formData.tasks
+      .split('\n')
+      .filter(task => task.trim())
+      .map(task => ({
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        description: task.trim(),
+        completed: false
+      }));
+
     const newRecord: MaintenanceRecord = {
       id: Date.now().toString(),
       vehicleId: formData.vehicleId,
@@ -116,7 +129,10 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
       date: formData.date,
       notes: formData.notes,
       cost: formData.cost ? parseFloat(formData.cost) : undefined,
-      addedDate: new Date().toISOString().split('T')[0]
+      addedDate: new Date().toISOString().split('T')[0],
+      completed: false,
+      tasks: tasks,
+      receiptImage: formData.receiptImage?.name
     };
 
     saveMaintenanceRecords([...maintenanceRecords, newRecord]);
@@ -127,11 +143,38 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
       serviceType: '',
       date: '',
       notes: '',
-      cost: ''
+      cost: '',
+      tasks: '',
+      receiptImage: null
     });
     setShowAddForm(false);
 
     setTimeout(() => setAlert(null), 3000);
+  };
+
+  const toggleMaintenanceCompletion = (recordId: string) => {
+    const updatedRecords = maintenanceRecords.map(record => 
+      record.id === recordId 
+        ? { ...record, completed: !record.completed }
+        : record
+    );
+    saveMaintenanceRecords(updatedRecords);
+  };
+
+  const toggleTaskCompletion = (recordId: string, taskId: string) => {
+    const updatedRecords = maintenanceRecords.map(record => 
+      record.id === recordId 
+        ? {
+            ...record,
+            tasks: record.tasks.map(task =>
+              task.id === taskId 
+                ? { ...task, completed: !task.completed }
+                : task
+            )
+          }
+        : record
+    );
+    saveMaintenanceRecords(updatedRecords);
   };
 
   const handleDelete = (recordId: string) => {
@@ -150,7 +193,9 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
       serviceType: '',
       date: '',
       notes: '',
-      cost: ''
+      cost: '',
+      tasks: '',
+      receiptImage: null
     });
   };
 
@@ -159,6 +204,18 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
       .filter(record => record.cost)
       .reduce((total, record) => total + (record.cost || 0), 0);
   };
+
+  const getCompletionStats = () => {
+    const total = maintenanceRecords.length;
+    const completed = maintenanceRecords.filter(r => r.completed).length;
+    const openTasks = maintenanceRecords
+      .flatMap(r => r.tasks)
+      .filter(t => !t.completed).length;
+    
+    return { total, completed, open: total - completed, openTasks };
+  };
+
+  const stats = getCompletionStats();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50">
@@ -190,15 +247,39 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="fleet-card">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">סה"כ פעולות</p>
-                  <p className="text-2xl font-bold text-gray-900">{maintenanceRecords.length}</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
                 </div>
                 <Wrench className="w-8 h-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="fleet-card">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">הושלמו</p>
+                  <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
+                </div>
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="fleet-card">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">פתוחות</p>
+                  <p className="text-2xl font-bold text-orange-600">{stats.open}</p>
+                </div>
+                <Clock className="w-8 h-8 text-orange-600" />
               </div>
             </CardContent>
           </Card>
@@ -211,25 +292,6 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
                   <p className="text-2xl font-bold text-gray-900">₪{getTotalCost().toLocaleString()}</p>
                 </div>
                 <FileText className="w-8 h-8 text-blue-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="fleet-card">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">החודש</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {maintenanceRecords.filter(r => {
-                      const recordDate = new Date(r.date);
-                      const currentDate = new Date();
-                      return recordDate.getMonth() === currentDate.getMonth() && 
-                             recordDate.getFullYear() === currentDate.getFullYear();
-                    }).length}
-                  </p>
-                </div>
-                <Calendar className="w-8 h-8 text-purple-600" />
               </div>
             </CardContent>
           </Card>
@@ -257,7 +319,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
                 הוספת פעולת תחזוקה חדשה
               </CardTitle>
               <CardDescription>
-                הזינו את פרטי פעולת התחזוקה
+                הזינו את פרטי פעולת התחזוקה והמשימות הנדרשות
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -323,6 +385,37 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
                       className="text-right"
                     />
                   </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="receiptImage" className="flex items-center gap-2">
+                      <Upload className="w-4 h-4" />
+                      תמונת קבלה
+                    </Label>
+                    <Input
+                      id="receiptImage"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleReceiptUpload}
+                      className="text-right"
+                    />
+                    {formData.receiptImage && (
+                      <p className="text-sm text-green-600">
+                        נבחר קובץ: {formData.receiptImage.name}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="tasks">משימות (כל משימה בשורה נפרדת)</Label>
+                    <Textarea
+                      id="tasks"
+                      value={formData.tasks}
+                      onChange={(e) => setFormData({...formData, tasks: e.target.value})}
+                      placeholder="החלפת שמן&#10;בדיקת צמיגים&#10;ניקוי רדיאטור"
+                      className="text-right"
+                      rows={4}
+                    />
+                  </div>
                   
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="notes">הערות</Label>
@@ -365,7 +458,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
               {maintenanceRecords.map((record, index) => (
                 <Card 
                   key={record.id} 
-                  className={`fleet-card slide-in-right`}
+                  className={`fleet-card slide-in-right ${record.completed ? 'bg-green-50 border-green-200' : ''}`}
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
                   <CardContent className="p-6">
@@ -375,6 +468,13 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
                           <Car className="w-5 h-5 text-blue-600" />
                           <h4 className="font-semibold text-lg">{record.vehiclePlateNumber}</h4>
                           <Badge variant="secondary">{record.serviceType}</Badge>
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={record.completed}
+                              onCheckedChange={() => toggleMaintenanceCompletion(record.id)}
+                            />
+                            <span className="text-sm">הושלם</span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                           <span className="flex items-center gap-1">
@@ -386,7 +486,34 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
                               ₪{record.cost.toLocaleString()}
                             </span>
                           )}
+                          {record.receiptImage && (
+                            <Badge variant="outline" className="flex items-center gap-1">
+                              <Upload className="w-3 h-3" />
+                              יש קבלה
+                            </Badge>
+                          )}
                         </div>
+
+                        {/* Tasks */}
+                        {record.tasks && record.tasks.length > 0 && (
+                          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                            <h5 className="font-medium mb-2">משימות:</h5>
+                            <div className="space-y-2">
+                              {record.tasks.map(task => (
+                                <div key={task.id} className="flex items-center gap-2">
+                                  <Checkbox
+                                    checked={task.completed}
+                                    onCheckedChange={() => toggleTaskCompletion(record.id, task.id)}
+                                  />
+                                  <span className={`text-sm ${task.completed ? 'line-through text-gray-500' : ''}`}>
+                                    {task.description}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {record.notes && (
                           <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">
                             {record.notes}

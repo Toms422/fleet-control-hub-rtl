@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Search, Calendar, User, Car, Camera, MapPin, FileText, Eye } from 'lucide-react';
+import { ArrowLeft, Search, Calendar, User, Car, Camera, MapPin, FileText, Eye, Image } from 'lucide-react';
 
 interface HistoryProps {
   onBack: () => void;
@@ -19,7 +18,7 @@ interface PublicFormEntry {
   feature: string;
   project: string;
   trip: string;
-  image?: string;
+  images?: string[];
   notes?: string;
   status: 'new' | 'reviewed' | 'processed';
 }
@@ -31,60 +30,37 @@ const History: React.FC<HistoryProps> = ({ onBack }) => {
 
   useEffect(() => {
     // Load entries from localStorage
-    const savedEntries = localStorage.getItem('publicFormEntries');
-    if (savedEntries) {
+    const savedReports = localStorage.getItem('publicReports');
+    if (savedReports) {
       try {
-        const parsed = JSON.parse(savedEntries);
+        const parsed = JSON.parse(savedReports);
         const entriesWithDates = parsed.map((entry: any) => ({
           ...entry,
-          timestamp: new Date(entry.timestamp)
+          timestamp: new Date(entry.submittedAt || entry.timestamp),
+          project: entry.feature || 'לא צוין',
+          trip: entry.feature || 'לא צוין',
+          images: entry.images || (entry.image ? [entry.image] : [])
         }));
         setEntries(entriesWithDates);
       } catch (error) {
         console.error('Error parsing saved entries:', error);
       }
-    } else {
-      // Sample data for demonstration
-      const sampleEntries: PublicFormEntry[] = [
-        {
-          id: '1',
-          timestamp: new Date('2025-01-06T10:30:00'),
-          driverName: 'יוסי כהן',
-          barcode: 'V001-123456',
-          distance: '145,230',
-          feature: 'אוטוסטרדה 6',
-          project: 'פרויקט דרום',
-          trip: 'נסיעה לאשקלון',
-          status: 'new',
-          notes: 'הכל תקין, רכב במצב מעולה'
-        },
-        {
-          id: '2',
-          timestamp: new Date('2025-01-05T14:15:00'),
-          driverName: 'מירי לוי',
-          barcode: 'V002-789012',
-          distance: '89,456',
-          feature: 'כביש 4',
-          project: 'פרויקט מרכז',
-          trip: 'נסיעה לתל אביב',
-          status: 'reviewed',
-          notes: 'זוהה רעש קל בבלמים'
-        },
-        {
-          id: '3',
-          timestamp: new Date('2025-01-04T08:45:00'),
-          driverName: 'דני שמואל',
-          barcode: 'V003-345678',
-          distance: '203,890',
-          feature: 'אוטוסטרדה 1',
-          project: 'פרויקט צפון',
-          trip: 'נסיעה לחיפה',
-          status: 'processed',
-          notes: 'בוצעה תדלוק מלא'
-        }
-      ];
-      setEntries(sampleEntries);
-      localStorage.setItem('publicFormEntries', JSON.stringify(sampleEntries));
+    }
+
+    // Also load from old format if exists
+    const savedEntries = localStorage.getItem('publicFormEntries');
+    if (savedEntries && !savedReports) {
+      try {
+        const parsed = JSON.parse(savedEntries);
+        const entriesWithDates = parsed.map((entry: any) => ({
+          ...entry,
+          timestamp: new Date(entry.timestamp),
+          images: entry.images || []
+        }));
+        setEntries(entriesWithDates);
+      } catch (error) {
+        console.error('Error parsing saved entries:', error);
+      }
     }
   }, []);
 
@@ -111,7 +87,7 @@ const History: React.FC<HistoryProps> = ({ onBack }) => {
       entry.id === id ? { ...entry, status: newStatus } : entry
     );
     setEntries(updatedEntries);
-    localStorage.setItem('publicFormEntries', JSON.stringify(updatedEntries));
+    localStorage.setItem('publicReports', JSON.stringify(updatedEntries));
   };
 
   const filteredEntries = entries.filter(entry => {
@@ -260,19 +236,8 @@ const History: React.FC<HistoryProps> = ({ onBack }) => {
                     </div>
                     <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4 text-gray-500" />
-                      <span className="text-sm text-gray-600">פרויקט:</span>
+                      <span className="text-sm text-gray-600">תכונה:</span>
                       <span className="text-sm font-medium">{entry.project}</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <span className="text-sm text-gray-600">תכונה/מיקום:</span>
-                      <p className="text-sm font-medium">{entry.feature}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-600">נסיעה:</span>
-                      <p className="text-sm font-medium">{entry.trip}</p>
                     </div>
                   </div>
 
@@ -280,6 +245,21 @@ const History: React.FC<HistoryProps> = ({ onBack }) => {
                     <div className="mb-4">
                       <span className="text-sm text-gray-600">הערות:</span>
                       <p className="text-sm text-gray-900 mt-1 p-2 bg-gray-50 rounded">{entry.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Images Display */}
+                  {entry.images && entry.images.length > 0 && (
+                    <div className="mb-4">
+                      <span className="text-sm text-gray-600 mb-2 block">תמונות שצורפו:</span>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {entry.images.map((imageName, index) => (
+                          <div key={index} className="relative bg-gray-100 rounded-lg p-3 flex items-center justify-center">
+                            <Image className="w-8 h-8 text-gray-400" />
+                            <span className="text-xs text-gray-600 mt-1 text-center">{imageName}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -304,10 +284,10 @@ const History: React.FC<HistoryProps> = ({ onBack }) => {
                         </Button>
                       )}
                     </div>
-                    {entry.image && (
+                    {entry.images && entry.images.length > 0 && (
                       <Badge variant="outline" className="flex items-center gap-1">
                         <Camera className="w-3 h-3" />
-                        יש תמונה
+                        {entry.images.length} תמונות
                       </Badge>
                     )}
                   </div>

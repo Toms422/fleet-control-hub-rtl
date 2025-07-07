@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { FileText, Camera, QrCode, ArrowRight, CheckCircle, Gauge } from 'lucide-react';
+import { FileText, Camera, QrCode, ArrowRight, CheckCircle, Gauge, X } from 'lucide-react';
 
 interface PublicFormProps {
   onBack: () => void;
@@ -15,7 +15,7 @@ interface PublicFormProps {
 const PublicForm: React.FC<PublicFormProps> = ({ onBack }) => {
   const [formData, setFormData] = useState({
     barcode: '',
-    image: null as File | null,
+    images: [] as File[],
     mileage: '',
     feature: '',
     date: new Date().toISOString().split('T')[0],
@@ -28,10 +28,13 @@ const PublicForm: React.FC<PublicFormProps> = ({ onBack }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFormData({...formData, image: file});
-    }
+    const files = Array.from(e.target.files || []);
+    setFormData({...formData, images: [...formData.images, ...files]});
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = formData.images.filter((_, i) => i !== index);
+    setFormData({...formData, images: newImages});
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,8 +49,9 @@ const PublicForm: React.FC<PublicFormProps> = ({ onBack }) => {
     const newReport = {
       id: Date.now().toString(),
       ...formData,
-      image: formData.image ? formData.image.name : null,
-      submittedAt: new Date().toISOString()
+      images: formData.images.map(img => img.name),
+      submittedAt: new Date().toISOString(),
+      status: 'new'
     };
     reports.push(newReport);
     localStorage.setItem('publicReports', JSON.stringify(reports));
@@ -57,7 +61,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ onBack }) => {
     // Reset form
     setFormData({
       barcode: '',
-      image: null,
+      images: [],
       mileage: '',
       feature: '',
       date: new Date().toISOString().split('T')[0],
@@ -143,29 +147,49 @@ const PublicForm: React.FC<PublicFormProps> = ({ onBack }) => {
                 </div>
               </div>
 
-              {/* Vehicle Photo */}
+              {/* Vehicle Photos */}
               <div className="space-y-4 p-4 bg-green-50 rounded-lg">
                 <h3 className="font-semibold text-green-800 flex items-center gap-2">
                   <Camera className="w-5 h-5" />
-                  צילום רכב
+                  צילומי רכב
                 </h3>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="image">צלמו את הרכב</Label>
+                  <Label htmlFor="images">צלמו את הרכב (ניתן להעלות מספר תמונות)</Label>
                   <Input
-                    id="image"
+                    id="images"
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={handleImageUpload}
                     className="text-right"
                   />
-                  {formData.image && (
-                    <p className="text-sm text-green-600">
-                      נבחר קובץ: {formData.image.name}
-                    </p>
+                  
+                  {/* Display selected images */}
+                  {formData.images.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-green-600">תמונות שנבחרו:</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {formData.images.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
+                            <span className="text-sm truncate">{file.name}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeImage(index)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
+                  
                   <p className="text-xs text-gray-600">
-                    צלמו את הרכב מבחוץ לתיעוד מצבו הנוכחי
+                    צלמו את הרכב מזוויות שונות לתיעוד מצבו הנוכחי
                   </p>
                 </div>
               </div>
@@ -281,6 +305,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ onBack }) => {
             <ul className="space-y-2 text-sm text-blue-700">
               <li>• דיווח זה עוזר לנו לשמור על בטיחות הצי ולתכנן תחזוקה מונעת</li>
               <li>• אנא דווחו על כל בעיה או ליקוי, גם קטן</li>
+              <li>• ניתן להעלות מספר תמונות לתיעוד טוב יותר</li>
               <li>• הדיווח נשמר במערכת ומתבצע עליו מעקב</li>
               <li>• במקרה חירום או בעיה חמורה, צרו קשר מיידי עם המוקד</li>
             </ul>
