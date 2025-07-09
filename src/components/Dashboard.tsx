@@ -9,6 +9,11 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
+// Helper function to trigger storage update event
+const triggerStorageUpdate = () => {
+  window.dispatchEvent(new Event('localStorageUpdate'));
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onLogout }) => {
   const [vehicleStats, setVehicleStats] = useState({
     totalVehicles: 0,

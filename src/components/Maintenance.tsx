@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Wrench, Plus, Trash2, ArrowRight, Calendar, FileText, Car, CheckCircle, Clock, Upload } from 'lucide-react';
+import { Wrench, Plus, Trash2, ArrowRight, Calendar, FileText, Car, CheckCircle, Clock, Upload, Repeat } from 'lucide-react';
 
 interface MaintenanceRecord {
   id: string;
@@ -46,7 +46,10 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
     notes: '',
     cost: '',
     tasks: '',
-    receiptImage: null as File | null
+    receiptImage: null as File | null,
+    isRecurring: false,
+    recurringFrequency: 'none',
+    recurringCount: '1'
   });
 
   const serviceTypes = [
@@ -136,6 +139,15 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
     };
 
     saveMaintenanceRecords([...maintenanceRecords, newRecord]);
+    
+    // Handle recurring maintenance
+    if (formData.isRecurring && formData.recurringFrequency && formData.recurringFrequency !== 'none') {
+      generateRecurringTasks(newRecord, formData.recurringFrequency, parseInt(formData.recurringCount || '1'));
+    }
+    
+    // Trigger dashboard stats update
+    window.dispatchEvent(new Event('localStorageUpdate'));
+    
     setAlert({ type: 'success', message: 'פעולת התחזוקה נוספה בהצלחה!' });
 
     setFormData({
@@ -145,7 +157,10 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
       notes: '',
       cost: '',
       tasks: '',
-      receiptImage: null
+      receiptImage: null,
+      isRecurring: false,
+      recurringFrequency: 'none',
+      recurringCount: '1'
     });
     setShowAddForm(false);
 
@@ -186,6 +201,45 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
     }
   };
 
+  const generateRecurringTasks = (baseRecord: MaintenanceRecord, frequency: string, count: number) => {
+    const recurringTasks: MaintenanceRecord[] = [];
+    const baseDate = new Date(baseRecord.date);
+    
+    for (let i = 1; i <= count; i++) {
+      const nextDate = new Date(baseDate);
+      
+      switch (frequency) {
+        case 'weekly':
+          nextDate.setDate(baseDate.getDate() + (i * 7));
+          break;
+        case 'monthly':
+          nextDate.setMonth(baseDate.getMonth() + i);
+          break;
+        case 'quarterly':
+          nextDate.setMonth(baseDate.getMonth() + (i * 3));
+          break;
+        case 'yearly':
+          nextDate.setFullYear(baseDate.getFullYear() + i);
+          break;
+      }
+      
+      const recurringTask: MaintenanceRecord = {
+        ...baseRecord,
+        id: `${baseRecord.id}-recurring-${i}`,
+        date: nextDate.toISOString().split('T')[0],
+        completed: false,
+        addedDate: new Date().toISOString().split('T')[0]
+      };
+      
+      recurringTasks.push(recurringTask);
+    }
+    
+    if (recurringTasks.length > 0) {
+      const allRecords = [...maintenanceRecords, ...recurringTasks];
+      saveMaintenanceRecords(allRecords);
+    }
+  };
+
   const handleCancel = () => {
     setShowAddForm(false);
     setFormData({
@@ -195,7 +249,10 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
       notes: '',
       cost: '',
       tasks: '',
-      receiptImage: null
+      receiptImage: null,
+      isRecurring: false,
+      recurringFrequency: 'none',
+      recurringCount: '1'
     });
   };
 
@@ -427,6 +484,55 @@ const Maintenance: React.FC<MaintenanceProps> = ({ onBack }) => {
                       className="text-right"
                       rows={3}
                     />
+                  </div>
+
+                  {/* Recurring Maintenance Section */}
+                  <div className="space-y-4 md:col-span-2 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={formData.isRecurring}
+                        onCheckedChange={(checked) => setFormData({...formData, isRecurring: !!checked})}
+                      />
+                      <Label className="flex items-center gap-2">
+                        <Repeat className="w-4 h-4" />
+                        תחזוקה חוזרת
+                      </Label>
+                    </div>
+                    
+                    {formData.isRecurring && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>תדירות</Label>
+                          <Select 
+                            value={formData.recurringFrequency} 
+                            onValueChange={(value) => setFormData({...formData, recurringFrequency: value})}
+                          >
+                            <SelectTrigger className="text-right">
+                              <SelectValue placeholder="בחרו תדירות" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="weekly">שבועי</SelectItem>
+                              <SelectItem value="monthly">חודשי</SelectItem>
+                              <SelectItem value="quarterly">רבעוני</SelectItem>
+                              <SelectItem value="yearly">שנתי</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>מספר חזרות</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="12"
+                            value={formData.recurringCount}
+                            onChange={(e) => setFormData({...formData, recurringCount: e.target.value})}
+                            placeholder="1"
+                            className="text-right"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 

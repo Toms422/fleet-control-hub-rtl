@@ -252,11 +252,35 @@ const History: React.FC<HistoryProps> = ({ onBack }) => {
                   {entry.images && entry.images.length > 0 && (
                     <div className="mb-4">
                       <span className="text-sm text-gray-600 mb-2 block">תמונות שצורפו:</span>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {entry.images.map((imageName, index) => (
-                          <div key={index} className="relative bg-gray-100 rounded-lg p-3 flex items-center justify-center">
-                            <Image className="w-8 h-8 text-gray-400" />
-                            <span className="text-xs text-gray-600 mt-1 text-center">{imageName}</span>
+                          <div 
+                            key={index} 
+                            className="relative bg-gray-100 rounded-lg p-2 hover:bg-gray-200 transition-colors cursor-pointer group"
+                            onClick={() => {
+                              // Create a simple image viewer
+                              const modal = document.createElement('div');
+                              modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+                              modal.innerHTML = `
+                                <div class="relative max-w-4xl max-h-4xl p-4">
+                                  <button class="absolute top-2 right-2 text-white text-2xl font-bold z-10 bg-black bg-opacity-50 rounded-full w-8 h-8 flex items-center justify-center" onclick="this.parentElement.parentElement.remove()">×</button>
+                                  <img src="data:image/jpeg;base64,${imageName}" class="max-w-full max-h-full object-contain" alt="תמונה ${index + 1}" />
+                                  <p class="text-white text-center mt-2">${imageName}</p>
+                                </div>
+                              `;
+                              modal.onclick = (e) => {
+                                if (e.target === modal) modal.remove();
+                              };
+                              document.body.appendChild(modal);
+                            }}
+                          >
+                            <div className="flex flex-col items-center">
+                              <Image className="w-6 h-6 text-gray-400 mb-1" />
+                              <span className="text-xs text-gray-600 text-center line-clamp-2">
+                                תמונה {index + 1}
+                              </span>
+                            </div>
+                            <div className="absolute inset-0 bg-blue-500 bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all"></div>
                           </div>
                         ))}
                       </div>

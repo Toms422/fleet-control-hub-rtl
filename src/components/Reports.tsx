@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Download, Car, Wrench, TrendingUp, Calendar, FileText, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Download, Car, Wrench, TrendingUp, Calendar, FileText, BarChart3, Filter } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
 interface ReportsProps {
@@ -13,11 +14,50 @@ interface ReportsProps {
 
 const Reports: React.FC<ReportsProps> = ({ onBack }) => {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
+  const [selectedVehicle, setSelectedVehicle] = useState<string>('all');
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [maintenanceRecords, setMaintenanceRecords] = useState<any[]>([]);
+  const [publicReports, setPublicReports] = useState<any[]>([]);
 
-  // Sample data for charts
+  useEffect(() => {
+    // Load real data from localStorage
+    const savedVehicles = localStorage.getItem('vehicles');
+    if (savedVehicles) {
+      setVehicles(JSON.parse(savedVehicles));
+    }
+
+    const savedMaintenance = localStorage.getItem('maintenanceRecords');
+    if (savedMaintenance) {
+      setMaintenanceRecords(JSON.parse(savedMaintenance));
+    }
+
+    const savedReports = localStorage.getItem('publicReports');
+    if (savedReports) {
+      setPublicReports(JSON.parse(savedReports));
+    }
+  }, []);
+
+  // Filter data based on selected vehicle
+  const filteredMaintenance = selectedVehicle === 'all' 
+    ? maintenanceRecords 
+    : maintenanceRecords.filter(record => record.vehicleId === selectedVehicle);
+  
+  const filteredReports = selectedVehicle === 'all' 
+    ? publicReports 
+    : publicReports.filter(report => report.barcode === vehicles.find(v => v.id === selectedVehicle)?.barcode);
+
+  // Dynamic data for charts based on real data
   const vehicleStatusData = [
-    { name: 'תקין', value: 3, color: '#10b981' },
-    { name: 'דורש טיפול', value: 1, color: '#f59e0b' },
+    { 
+      name: 'תקין', 
+      value: vehicles.filter(v => v.maintenanceStatus === 'תקין').length, 
+      color: '#10b981' 
+    },
+    { 
+      name: 'דורש טיפול', 
+      value: vehicles.filter(v => v.maintenanceStatus === 'דורש טיפול').length, 
+      color: '#f59e0b' 
+    },
   ];
 
   const maintenanceByMonth = [
@@ -45,10 +85,25 @@ const Reports: React.FC<ReportsProps> = ({ onBack }) => {
     { month: 'יוני', maintenance: 2800, fuel: 4900 },
   ];
 
+  const totalVehicles = selectedVehicle === 'all' ? vehicles.length : 1;
+  const currentMonthMaintenance = filteredMaintenance.filter(m => {
+    const maintenanceDate = new Date(m.date);
+    const currentDate = new Date();
+    return maintenanceDate.getMonth() === currentDate.getMonth() && 
+           maintenanceDate.getFullYear() === currentDate.getFullYear();
+  }).length;
+  
+  const totalDistance = filteredReports.reduce((sum, report) => {
+    const distance = parseInt(report.distance || '0');
+    return sum + (isNaN(distance) ? 0 : distance);
+  }, 0);
+  
+  const totalCost = filteredMaintenance.reduce((sum, m) => sum + (m.cost || 0), 0);
+
   const quickStats = [
     {
-      title: 'סה"כ רכבים',
-      value: '4',
+      title: selectedVehicle === 'all' ? 'סה"כ רכבים' : 'רכב נבחר',
+      value: totalVehicles.toString(),
       change: '+0%',
       icon: Car,
       color: 'text-blue-600',
@@ -56,7 +111,7 @@ const Reports: React.FC<ReportsProps> = ({ onBack }) => {
     },
     {
       title: 'תחזוקות החודש',
-      value: '12',
+      value: currentMonthMaintenance.toString(),
       change: '+25%',
       icon: Wrench,
       color: 'text-green-600',
@@ -64,15 +119,15 @@ const Reports: React.FC<ReportsProps> = ({ onBack }) => {
     },
     {
       title: 'סה"כ ק"מ',
-      value: '55,300',
+      value: totalDistance.toLocaleString(),
       change: '+12%',
       icon: TrendingUp,
       color: 'text-purple-600',
       bg: 'bg-purple-50'
     },
     {
-      title: 'עלות חודשית',
-      value: '₪7,700',
+      title: 'עלות כוללת',
+      value: `₪${totalCost.toLocaleString()}`,
       change: '-8%',
       icon: BarChart3,
       color: 'text-orange-600',
@@ -133,6 +188,31 @@ const Reports: React.FC<ReportsProps> = ({ onBack }) => {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Vehicle Filter */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="w-5 h-5" />
+              סינון לפי רכב
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select value={selectedVehicle} onValueChange={setSelectedVehicle}>
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="בחר רכב" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל הרכבים</SelectItem>
+                {vehicles.map(vehicle => (
+                  <SelectItem key={vehicle.id} value={vehicle.id}>
+                    {vehicle.plateNumber} - {vehicle.model}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {quickStats.map((stat, index) => (
