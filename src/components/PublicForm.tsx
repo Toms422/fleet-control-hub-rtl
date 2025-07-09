@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,10 @@ interface PublicFormProps {
 }
 
 const PublicForm: React.FC<PublicFormProps> = ({ onBack }) => {
+  const { toast } = useToast();
+  const [scannedBarcode, setScannedBarcode] = useState<string>('');
+  const [vehicleInfo, setVehicleInfo] = useState<any>(null);
+  
   const [formData, setFormData] = useState({
     barcode: '',
     images: [] as File[],
@@ -26,6 +31,37 @@ const PublicForm: React.FC<PublicFormProps> = ({ onBack }) => {
 
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    // Check for barcode in URL hash (since we're using hash routing)
+    const hash = window.location.hash;
+    const urlParams = new URLSearchParams(hash.split('?')[1] || '');
+    const barcodeParam = urlParams.get('barcode');
+    
+    if (barcodeParam) {
+      setScannedBarcode(barcodeParam);
+      setFormData(prev => ({ ...prev, barcode: barcodeParam }));
+      
+      // Find vehicle by barcode
+      const savedVehicles = localStorage.getItem('vehicles');
+      if (savedVehicles) {
+        const vehicles = JSON.parse(savedVehicles);
+        const vehicle = vehicles.find((v: any) => v.barcode === barcodeParam);
+        if (vehicle) {
+          setVehicleInfo(vehicle);
+          toast({
+            title: "רכב זוהה!",
+            description: `רכב ${vehicle.plateNumber} - ${vehicle.model}`,
+          });
+        }
+      }
+    } else {
+      toast({
+        title: "ברוכים הבאים!",
+        description: "מלאו את הטופס לדיווח על תקלה או אירוע",
+      });
+    }
+  }, [toast]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -49,12 +85,16 @@ const PublicForm: React.FC<PublicFormProps> = ({ onBack }) => {
     const newReport = {
       id: Date.now().toString(),
       ...formData,
+      distance: formData.mileage, // Map mileage to distance for history compatibility
       images: formData.images.map(img => img.name),
       submittedAt: new Date().toISOString(),
       status: 'new'
     };
     reports.push(newReport);
     localStorage.setItem('publicReports', JSON.stringify(reports));
+
+    // Trigger dashboard stats update
+    window.dispatchEvent(new Event('localStorageUpdate'));
 
     setAlert({ type: 'success', message: 'הדיווח נשלח בהצלחה! תודה על התרומה לבטיחות הצי.' });
     
@@ -91,10 +131,17 @@ const PublicForm: React.FC<PublicFormProps> = ({ onBack }) => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" onClick={onBack} className="flex items-center gap-2">
-                <ArrowRight className="w-4 h-4" />
-                חזרה לדף הבית
-              </Button>
+              {!scannedBarcode && (
+                <Button variant="ghost" onClick={onBack} className="flex items-center gap-2">
+                  <ArrowRight className="w-4 h-4" />
+                  חזרה לדף הבית
+                </Button>
+              )}
+              {scannedBarcode && (
+                <div className="text-sm text-gray-600">
+                  טופס דיווח לרכב ספציפי
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <FileText className="w-6 h-6 text-green-600" />
@@ -140,10 +187,20 @@ const PublicForm: React.FC<PublicFormProps> = ({ onBack }) => {
                     placeholder="סרקו או הזינו את הברקוד"
                     required
                     className="text-right"
+                    disabled={!!scannedBarcode}
                   />
-                  <p className="text-xs text-gray-600">
-                    ניתן למצוא את הברקוד על לוח המכוונים או על מפתח הרכב
-                  </p>
+                  {vehicleInfo && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-800">
+                        <strong>רכב זוהה:</strong> {vehicleInfo.plateNumber} - {vehicleInfo.model}
+                      </p>
+                    </div>
+                  )}
+                  {!scannedBarcode && (
+                    <p className="text-xs text-gray-600">
+                      ניתן למצוא את הברקוד על לוח המכוונים או על מפתח הרכב
+                    </p>
+                  )}
                 </div>
               </div>
 
